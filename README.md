@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./Primary%20Black%20BgRemover.png" alt="Threatopia logo" width="240" />
+</p>
+
 # Threatopia
 
 A cybersecurity learning platform that combines interactive challenges, guided simulations, real-time leaderboard tracking, and an AI assistant to help learners improve their security awareness.
