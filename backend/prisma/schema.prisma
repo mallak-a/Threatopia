@@ -1,0 +1,190 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum AgeGroup {
+  teen
+  student
+  professional
+}
+
+enum UserRole {
+  student
+  instructor
+  admin
+}
+
+enum ChallengeCategory {
+  phishing
+  sql_injection
+  password_security
+  social_engineering
+  malware
+  network_security
+}
+
+enum ChallengeDifficulty {
+  beginner
+  intermediate
+  advanced
+  expert
+}
+
+enum LeaderboardType {
+  global
+  friends
+}
+
+enum NotificationType {
+  achievement
+  challenge
+  leaderboard
+  system
+}
+
+enum UserStatus {
+  active
+  inactive
+  banned
+}
+
+enum SimulationStatus {
+  available
+  coming_soon
+  maintenance
+}
+
+// Models
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(student)
+  ageGroup  AgeGroup?
+  avatar    String?
+  status    UserStatus @default(active)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  profile         UserProfile?
+  attempts        ChallengeAttempt[]
+  notifications   Notification[]
+  leaderboardEntries LeaderboardEntry[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id                 String   @id
+  points             Int      @default(0)
+  level              Int      @default(1)
+  badges             Json     @default("[]")
+  completedChallenges Json   @default("[]")
+  sqliScore          Int      @default(0)
+  phishingScore      Int      @default(0)
+  passwordScore      Int?
+  socialEngScore     Int?
+  streakDays         Int      @default(0)
+  totalChallenges    Int      @default(0)
+  rank               Int?
+
+  // Relations
+  user User @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Challenge {
+  id          String             @id @default(cuid())
+  title       String
+  description String
+  category    ChallengeCategory
+  difficulty  ChallengeDifficulty
+  points      Int
+  timeLimit   Int?
+  explanation String?
+  hints       Json               @default("[]")
+  codeSnippet String?
+  imageUrl    String?
+  completedBy Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relations
+  attempts ChallengeAttempt[]
+
+  @@map("challenges")
+}
+
+model ChallengeAttempt {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  answer      String   // JSON string for complex answers
+  timeSpent   Int?
+  correct     Boolean  @default(false)
+  pointsEarned Int     @default(0)
+  attemptedAt DateTime @default(now())
+
+  // Relations
+  challenge Challenge @relation(fields: [challengeId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@map("challenge_attempts")
+}
+
+model LeaderboardEntry {
+  id     String          @id @default(cuid())
+  userId String
+  type   LeaderboardType @default(global)
+  rank   Int
+  points Int             @default(0)
+  level  Int             @default(1)
+  date   DateTime        @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("leaderboard_entries")
+}
+
+model Simulation {
+  id          String             @id @default(cuid())
+  title       String
+  description String
+  difficulty  ChallengeDifficulty
+  duration    Int
+  category    ChallengeCategory
+  status      SimulationStatus   @default(available)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("simulations")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
