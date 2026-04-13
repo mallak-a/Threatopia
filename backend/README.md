@@ -6,30 +6,20 @@ A RESTful API for the **Threatopia** cybersecurity learning platform built with 
 
 ### Prerequisites
 
-Ensure you have the following installed on your system:
-
-- **Node.js** (v18.0.0 or higher)
-- **npm** (v9.0.0 or higher)
+- **Node.js** (v18 or higher)
+- **npm** (v9 or higher)
 - **Git**
 
-### Step 1: Clone the Repository
+### Install Dependencies
 
 ```bash
-git clone <repository-url>
-cd threatopia/backend
-```
-
-### Step 2: Install Dependencies
-
-Install all required packages:
-
-```bash
+cd backend
 npm install
 ```
 
-### Step 3: Environment Configuration
+### Environment Configuration
 
-Create a `.env` file in the backend directory with the following variables:
+Create a `.env` file in the `backend` directory with these values:
 
 ```env
 PORT=5000
@@ -37,7 +27,8 @@ NODE_ENV=development
 JWT_SECRET=your_jwt_secret_key_here
 ```
 
-**Example `.env` file:**
+Example:
+
 ```env
 PORT=5000
 NODE_ENV=development
@@ -46,53 +37,34 @@ JWT_SECRET=super_secret_jwt_key_12345
 
 ## 🛠️ Development
 
-### Start Development Server
-
-Run the development server with hot reload:
+### Start the development server
 
 ```bash
 npm run dev
 ```
 
-The server will start at `http://localhost:5000/api` and will automatically restart on file changes.
+The server runs with hot reload and serves the API under `http://localhost:5000/api`.
 
-### Build for Production
-
-Compile TypeScript to JavaScript:
+### Build for production
 
 ```bash
 npm run build
 ```
 
-### Start Production Server
-
-Start the built application:
+### Start the production server
 
 ```bash
 npm start
 ```
 
-## 📦 Dependencies
+### Database and Prisma
 
-### Core Framework
-- **Express.js** - Minimal and flexible Node.js web application framework
-- **TypeScript** - Typed superset of JavaScript for better type safety
-- **ts-node-dev** - TypeScript development server with auto-reload
-
-### Security & Authentication
-- **bcryptjs** - Password hashing library
-- **jsonwebtoken (JWT)** - Token-based authentication
-- **cors** - Cross-Origin Resource Sharing middleware
-
-### Utilities
-- **dotenv** - Environment variable management
-
-### Development Tools
-- **@types/node** - TypeScript types for Node.js
-- **@types/express** - TypeScript types for Express.js
-- **@types/bcryptjs** - TypeScript types for bcryptjs
-- **@types/cors** - TypeScript types for cors
-- **@types/jsonwebtoken** - TypeScript types for JWT
+```bash
+npm run db:migrate
+npm run db:generate
+npm run db:studio
+npm run db:seed
+```
 
 ## 📂 Project Structure
 
@@ -101,20 +73,20 @@ backend/
 ├── src/
 │   ├── server.ts              # Main Express server setup
 │   ├── types.ts               # TypeScript type definitions
-│   ├── data.ts                # Mock database (in-memory data)
+│   ├── data.ts                # Mock database and seed data
 │   ├── utils.ts               # Utility functions
 │   ├── middleware/
 │   │   └── auth.ts            # JWT authentication middleware
 │   └── routes/
 │       ├── health.ts          # Health check routes
-│       ├── auth.ts            # Authentication routes (login, register)
+│       ├── auth.ts            # Authentication routes
 │       ├── users.ts           # User profile routes
 │       ├── challenges.ts      # Challenge routes
 │       ├── leaderboard.ts     # Leaderboard routes
 │       ├── simulations.ts     # Simulation routes
 │       ├── assistant.ts       # AI assistant routes
 │       └── admin.ts           # Admin routes
-├── .env                       # Environment variables
+├── .env                       # Environment variables (not committed)
 ├── .gitignore                 # Git ignore rules
 ├── package.json               # Dependencies and scripts
 ├── tsconfig.json              # TypeScript configuration
@@ -123,70 +95,63 @@ backend/
 
 ## 🔌 API Endpoints
 
-### Health & Status
-- `GET /api/health` - Health check endpoint
-- `GET /api/maintenance` - Maintenance status
+### Health & status
+- `GET /api/health` - health check endpoint
+- `GET /api/maintenance` - maintenance status
 
 ### Authentication
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login user and get JWT token
+- `POST /api/auth/register` - register a new user
+- `POST /api/auth/login` - login and obtain a JWT token
 
 ### Challenges
-- `GET /api/challenges` - Get all challenges
-- `GET /api/challenges/:id` - Get a specific challenge
-- `POST /api/challenges/:id/attempt` - Submit a challenge attempt
+- `GET /api/challenges` - list all challenges
+- `GET /api/challenges/:id` - get a single challenge
+- `POST /api/challenges/:id/attempt` - submit a challenge attempt
 
 ### Users
-- `GET /api/users/profile` - Get current user profile *(protected)*
-- `GET /api/users/notifications` - Get user notifications *(protected)*
+- `GET /api/users/profile` - get current user profile *(protected)*
+- `GET /api/users/notifications` - get user notifications *(protected)*
 
 ### Leaderboard
-- `GET /api/leaderboard` - Get leaderboard rankings
+- `GET /api/leaderboard` - get leaderboard rankings
 
 ### AI Assistant
-- `POST /api/assistant/chat` - Chat with AI assistant *(protected)*
+- `POST /api/assistant/chat` - chat with the AI assistant *(protected)*
 
 ### Simulations
-- `GET /api/simulations` - Get available simulations
+- `GET /api/simulations` - list available simulations
 
-### Admin Routes *(protected - admin only)*
-- `GET /api/admin/analytics` - Get platform analytics
-- `GET /api/admin/users` - Get all users
-- `POST /api/admin/challenges` - Create new challenge
-- `PATCH /api/admin/users/:userId/role` - Update user role
-- `GET /api/admin/reports/:userId` - Get user reports
+### Admin routes *(protected, admin only)*
+- `GET /api/admin/analytics` - get analytics
+- `GET /api/admin/users` - list all users
+- `POST /api/admin/challenges` - create a new challenge
+- `PATCH /api/admin/users/:userId/role` - update a user role
+- `GET /api/admin/reports/:userId` - get user reports
 
 ## 🔐 Authentication
 
-### JWT Tokens
+### JWT tokens
 
-The API uses **JWT (JSON Web Tokens)** for authentication on protected routes.
+Protected routes require a valid JWT token in the `Authorization` header.
 
-#### How to authenticate:
+#### Example login request
 
-1. **Register/Login** to get a token:
-   ```bash
-   curl -X POST http://localhost:5000/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"email": "alex@example.com", "password": "demo123"}'
-   ```
-
-2. **Include token** in protected requests:
-   ```bash
-   curl -H "Authorization: Bearer <your_jwt_token>" \
-     http://localhost:5000/api/users/profile
-   ```
-
-#### Protected Routes
-
-The following routes require a valid JWT token in the `Authorization` header:
-- `/api/users/*` - All user routes
-- `/api/assistant/*` - All assistant routes
-- `/api/admin/*` - All admin routes (admin role required)
-
-#### Default Test Credentials
-
+```bash
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "alex@example.com", "password": "demo123"}'
 ```
+
+#### Example protected request
+
+```bash
+curl -H "Authorization: Bearer <your_jwt_token>" \
+  http://localhost:5000/api/users/profile
+```
+
+#### Default test credentials
+
+```text
 User: alex@example.com
 Password: demo123
 Role: student
@@ -197,6 +162,11 @@ Role: admin
 ```
 
 ## 📝 Notes
+
+- The backend exposes all API routes under `/api`
+- Use a strong secret for `JWT_SECRET` in production
+- `.env` should never be committed to version control
+
 
 - The backend currently uses **in-memory mock data** stored in `src/data.ts`
 - Data is not persisted between server restarts
