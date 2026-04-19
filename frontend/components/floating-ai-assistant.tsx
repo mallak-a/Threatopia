@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Send, User, Sparkles, Paperclip, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+
+import { api } from '@/lib/services/api'
 
 type Message = {
   id: string
@@ -27,6 +30,7 @@ const initialMessages: Message[] = [
 ]
 
 export function FloatingAIAssistant() {
+  const pathname = usePathname()
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -43,15 +47,16 @@ export function FloatingAIAssistant() {
     }
   }, [messages, isTyping, isOpen])
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     
     if (!inputValue.trim()) return
 
+    const userMessage = inputValue.trim()
     const newMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputValue,
+      content: userMessage,
       timestamp: new Date()
     }
 
@@ -59,17 +64,38 @@ export function FloatingAIAssistant() {
     setInputValue('')
     setIsTyping(true)
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await api.assistant.sendMessage(userMessage)
+      
+      const reply = response.success && response.data 
+        ? response.data.reply 
+        : "I'm having trouble connecting to my brain right now. Please try again later."
+
       const responseMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `I am analyzing the context of your query. This feature is integrated directly into your workspace for instant intelligence gathering.`,
+        content: reply,
         timestamp: new Date()
       }
+      
       setMessages(prev => [...prev, responseMessage])
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I encountered an error. Please check your connection and try again.",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
+  }
+
+  // Hide the assistant on auth pages
+  if (pathname === '/login' || pathname === '/register') {
+    return null
   }
 
   return (
@@ -96,73 +122,71 @@ export function FloatingAIAssistant() {
           </SheetTitle>
         </SheetHeader>
         
-        <div className="flex-1 flex flex-col relative overflow-hidden">
+        <div className="flex-1 flex flex-col relative overflow-hidden min-h-0">
           <div className="absolute inset-0 cyber-grid opacity-20 pointer-events-none" />
           
-          <ScrollArea className="flex-1 p-4 w-full">
-            <div className="space-y-4 pb-4">
-              <AnimatePresence initial={false}>
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={cn(
-                      "flex gap-3 max-w-[90%]",
-                      message.role === 'user' ? "ml-auto flex-row-reverse" : ""
-                    )}
-                  >
-                    <Avatar className={cn(
-                      "h-8 w-8 border",
-                      message.role === 'assistant' ? "border-neon-cyan shadow-[0_0_8px_rgba(0,212,255,0.3)]" : "border-primary"
-                    )}>
-                      <AvatarFallback className={message.role === 'assistant' ? "bg-navy-deep" : "bg-primary/20"}>
-                        {message.role === 'assistant' ? (
-                          <Bot className="h-4 w-4 text-neon-cyan" />
-                        ) : (
-                          <User className="h-4 w-4 text-primary" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className={cn(
-                      "rounded-2xl p-3 relative z-10 text-sm",
-                      message.role === 'user' 
-                        ? "bg-primary/10 text-foreground rounded-tr-sm border border-primary/20" 
-                        : "bg-navy-mid/90 text-foreground rounded-tl-sm neon-border glass-light"
-                    )}>
-                      <p className="leading-relaxed whitespace-pre-wrap">
-                        {message.content}
-                      </p>
-                      <span className="text-[9px] text-muted-foreground mt-1.5 block opacity-70">
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              
-              {isTyping && (
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-neon-blue/30 scrollbar-track-transparent">
+            <AnimatePresence initial={false}>
+              {messages.map((message) => (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-3 max-w-[80%]"
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  className={cn(
+                    "flex gap-3 max-w-[90%]",
+                    message.role === 'user' ? "ml-auto flex-row-reverse" : ""
+                  )}
                 >
-                  <Avatar className="h-8 w-8 border border-neon-cyan neon-glow-sm">
-                    <AvatarFallback className="bg-navy-deep">
-                      <Bot className="h-4 w-4 text-neon-cyan" />
+                  <Avatar className={cn(
+                    "h-8 w-8 border",
+                    message.role === 'assistant' ? "border-neon-cyan shadow-[0_0_8px_rgba(0,212,255,0.3)]" : "border-primary"
+                  )}>
+                    <AvatarFallback className={message.role === 'assistant' ? "bg-navy-deep" : "bg-primary/20"}>
+                      {message.role === 'assistant' ? (
+                        <Bot className="h-4 w-4 text-neon-cyan" />
+                      ) : (
+                        <User className="h-4 w-4 text-primary" />
+                      )}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-navy-mid/90 rounded-2xl rounded-tl-sm p-3 neon-border flex items-center gap-1 h-10">
-                    <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  
+                  <div className={cn(
+                    "rounded-2xl p-3 relative z-10 text-sm",
+                    message.role === 'user' 
+                      ? "bg-primary/10 text-foreground rounded-tr-sm border border-primary/20" 
+                      : "bg-navy-mid/90 text-foreground rounded-tl-sm neon-border glass-light"
+                  )}>
+                    <p className="leading-relaxed whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                    <span className="text-[9px] text-muted-foreground mt-1.5 block opacity-70">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </motion.div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
+              ))}
+            </AnimatePresence>
+            
+            {isTyping && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-3 max-w-[80%]"
+              >
+                <Avatar className="h-8 w-8 border border-neon-cyan neon-glow-sm">
+                  <AvatarFallback className="bg-navy-deep">
+                    <Bot className="h-4 w-4 text-neon-cyan" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-navy-mid/90 rounded-2xl rounded-tl-sm p-3 neon-border flex items-center gap-1 h-10">
+                  <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </motion.div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
           <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-md relative z-10">
             {messages.length === 1 && (
@@ -185,15 +209,22 @@ export function FloatingAIAssistant() {
               </div>
             )}
             
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+            <form onSubmit={handleSendMessage} className="flex items-end gap-2">
               <div className="relative flex-1 group">
-                <Input
+                <textarea
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendMessage()
+                    }
+                  }}
                   placeholder="Ask the assistant..."
-                  className="pl-3 pr-10 py-5 bg-navy-mid/50 border-neon-blue/30 focus-visible:ring-neon-blue group-hover:border-neon-blue/50 transition-colors rounded-xl text-sm"
+                  rows={1}
+                  className="w-full pl-3 pr-10 py-3 bg-navy-mid/50 border border-neon-blue/30 focus:border-neon-blue focus:ring-1 focus:ring-neon-blue group-hover:border-neon-blue/50 transition-colors rounded-xl text-sm resize-none min-h-[44px] max-h-[120px] scrollbar-thin scrollbar-thumb-neon-blue/20"
                 />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <div className="absolute right-2 bottom-2">
                   <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-neon-cyan">
                     <Paperclip className="h-3.5 w-3.5" />
                   </Button>
@@ -203,7 +234,7 @@ export function FloatingAIAssistant() {
                 type="submit" 
                 size="icon" 
                 disabled={!inputValue.trim() || isTyping}
-                className="h-[42px] w-[42px] shrink-0 rounded-xl bg-primary hover:bg-primary/90 shadow-[0_0_10px_rgba(var(--neon-blue),0.3)] transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                className="h-[44px] w-[44px] shrink-0 rounded-xl bg-primary hover:bg-primary/90 shadow-[0_0_10px_rgba(var(--neon-blue),0.3)] transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
               >
                 <Send className="h-4 w-4" />
               </Button>

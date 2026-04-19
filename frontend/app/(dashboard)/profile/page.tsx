@@ -14,7 +14,9 @@ import {
   Save,
   Flag,
   Award,
-  TrendingUp
+  TrendingUp,
+  Phone,
+  Globe
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,9 +28,23 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { useAuthStore } from "@/lib/stores/auth-store"
-import { getAuthHeaders } from "@/lib/services/api"
+import { getAuthHeaders, updateContactInfo } from "@/lib/services/api"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { COUNTRIES } from "@/lib/constants/countries"
 import type { User as UserType } from "@/lib/types"
+
+const getPhonePart = (fullPhone?: string, countryName?: string) => {
+  if (!fullPhone) return ""
+  const countryObj = COUNTRIES.find(c => c.name === countryName)
+  if (countryObj && fullPhone.startsWith(countryObj.dialCode + ' ')) {
+    return fullPhone.substring(countryObj.dialCode.length + 1)
+  }
+  if (countryObj && fullPhone.startsWith(countryObj.dialCode)) {
+    return fullPhone.substring(countryObj.dialCode.length).trim()
+  }
+  return fullPhone
+}
 
 export default function ProfilePage() {
   const authStore = useAuthStore()
@@ -49,6 +65,8 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     username: user?.name || "",
     email: user?.email || "",
+    phonePart: getPhonePart(user?.phoneNumber, user?.country),
+    country: user?.country || "",
     bio: "Cybersecurity enthusiast passionate about CTF challenges and ethical hacking.",
   })
 
@@ -210,12 +228,14 @@ export default function ProfilePage() {
       const containerW = 600 // approximate rendered width of max-w-2xl dialog content
       const containerH = 320 // h-80 = 20rem = 320px
       const cropDiameter = 192 // w-48 h-48 = 12rem = 192px
-      const outputSize = 500 // final output canvas size
+      const outputSize = 1024 // high resolution output canvas size
 
-      // Step 1: Render the full scene onto a temp canvas matching the container
+      const scaleFactor = outputSize / cropDiameter
+
+      // Step 1: Render the full scene onto a temp canvas matching the container * at high resolution
       const tempCanvas = document.createElement('canvas')
-      tempCanvas.width = containerW
-      tempCanvas.height = containerH
+      tempCanvas.width = containerW * scaleFactor
+      tempCanvas.height = containerH * scaleFactor
       const tempCtx = tempCanvas.getContext('2d')
       if (!tempCtx) return
 
@@ -231,11 +251,14 @@ export default function ProfilePage() {
         drawW = containerH * imgAspect
       }
 
-      // Center position in container
+      // Center position in container (logical coordinates)
       const centerX = containerW / 2
       const centerY = containerH / 2
 
       tempCtx.save()
+      // Scale up the entire context so our logical coordinates map to high-res pixels
+      tempCtx.scale(scaleFactor, scaleFactor)
+      
       // Move to the center of the container, apply pan
       tempCtx.translate(centerX + panPosition.x, centerY + panPosition.y)
       // Apply rotation and zoom
@@ -258,14 +281,17 @@ export default function ProfilePage() {
       ctx.closePath()
       ctx.clip()
 
-      // Draw the cropped region from the temp canvas
-      const cropRadius = cropDiameter / 2
+      // Draw the cropped region from the high-res temp canvas
+      const highResCenterX = centerX * scaleFactor
+      const highResCenterY = centerY * scaleFactor
+      const highResCropRadius = outputSize / 2
+
       ctx.drawImage(
         tempCanvas,
-        centerX - cropRadius, // source x
-        centerY - cropRadius, // source y
-        cropDiameter, // source width
-        cropDiameter, // source height
+        highResCenterX - highResCropRadius, // source x
+        highResCenterY - highResCropRadius, // source y
+        outputSize, // source width
+        outputSize, // source height
         0, // dest x
         0, // dest y
         outputSize, // dest width
@@ -358,6 +384,21 @@ export default function ProfilePage() {
 
     setIsUploading(false)
 
+    // Update other profile data (contact info)
+    const selectedCountry = COUNTRIES.find(c => c.name === formData.country)
+    const fullPhoneNumber = selectedCountry ? `${selectedCountry.dialCode} ${formData.phonePart}` : formData.phonePart
+
+    const result = await updateContactInfo({
+      phoneNumber: fullPhoneNumber,
+      country: formData.country,
+    })
+
+    if (result.success && result.data) {
+      // Retain the current avatar if any, as it might have just been uploaded or already exists
+      const updatedUser: UserType = { ...user!, ...result.data, avatar: user?.avatar }
+      updateUser(updatedUser)
+    }
+
     // Only clear state and exit edit mode on success
     if (uploadSucceeded) {
       setIsEditing(false)
@@ -367,7 +408,6 @@ export default function ProfilePage() {
       setZoom(1)
       setPanPosition({ x: 0, y: 0 })
     }
-    // Would call API to update other profile data
   }
 
   return (
@@ -414,19 +454,19 @@ export default function ProfilePage() {
           <CardContent className="p-6">
             <div className="text-center">
               <div className="relative inline-block">
-                <Avatar className="h-24 w-24 ring-4 ring-primary/20">
-                  <AvatarImage src={displayAvatar} />
-                  <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                    {user?.name?.slice(0, 2).toUpperCase() || "U"}
+                <Avatar className="h-64 w-64 ring-4 ring-primary/30 shadow-2xl shadow-primary/10">
+                  <AvatarImage src={displayAvatar} className="object-cover" />
+                  <AvatarFallback className="text-6xl font-bold bg-primary text-primary-foreground">
+                    {user?.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || "U"}
                   </AvatarFallback>
                 </Avatar>
                 {isEditing && (
                   <>
                     <button 
                       onClick={handleCameraClick}
-                      className="absolute bottom-0 right-0 p-2 bg-primary rounded-full text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                      className="absolute bottom-3 right-3 p-3.5 bg-primary rounded-full text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer shadow-xl"
                     >
-                      <Camera className="h-4 w-4" />
+                      <Camera className="h-6 w-6" />
                     </button>
                     <input
                       id="profile-photo-input"
@@ -707,6 +747,44 @@ export default function ProfilePage() {
                           disabled={!isEditing}
                           className="pl-10"
                         />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Select
+                        value={formData.country}
+                        onValueChange={(value) => setFormData({ ...formData, country: value })}
+                        disabled={!isEditing}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your country" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {COUNTRIES.map((c) => (
+                            <SelectItem key={c.code} value={c.name}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phoneNumber">Phone Number</Label>
+                      <div className="flex gap-2">
+                        <div className="w-24 bg-muted/50 border border-input rounded-md flex items-center justify-center text-sm text-muted-foreground select-none">
+                          {formData.country ? COUNTRIES.find(c => c.name === formData.country)?.dialCode : '+00'}
+                        </div>
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+                          <Input
+                            id="phoneNumber"
+                            type="tel"
+                            value={formData.phonePart}
+                            onChange={(e) => setFormData({ ...formData, phonePart: e.target.value })}
+                            disabled={!isEditing || !formData.country}
+                            className="pl-10"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

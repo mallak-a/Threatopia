@@ -7,9 +7,15 @@ import type { AuthCredentials, RegisterData, User } from '../types'
 const router = Router()
 
 router.post('/register', async (req, res) => {
-  const { name, email, password, ageGroup } = req.body as RegisterData
-  if (!name || !email || !password || !ageGroup) {
+  const { name, email, password, phoneNumber, country, ageGroup } = req.body as RegisterData
+  if (!name || !email || !password || !phoneNumber || !country || !ageGroup) {
     return res.status(400).json({ success: false, error: 'Missing required registration fields' })
+  }
+
+  // Basic phone number validation (must contain digits, optional + prefix, min length 7)
+  const phoneRegex = /^\+?[0-9\s\-\(\)]{7,20}$/
+  if (!phoneRegex.test(phoneNumber)) {
+    return res.status(400).json({ success: false, error: 'Invalid phone number format' })
   }
 
   const existingUser = await findUserByEmail(email)
@@ -17,13 +23,15 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Email is already registered' })
   }
 
-  const newUser = await createUser({ name, email, password, ageGroup }, password)
+  const newUser = await createUser({ name, email, password, phoneNumber, country, ageGroup }, password)
   const token = signJwt({ userId: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role })
 
   const responseUser: User = {
     id: newUser.id,
     name: newUser.name,
     email: newUser.email,
+    phoneNumber: newUser.phoneNumber,
+    country: newUser.country,
     role: newUser.role,
     ageGroup: newUser.ageGroup,
     avatar: newUser.avatar,
@@ -55,6 +63,8 @@ router.post('/login', async (req, res) => {
     id: user.id,
     name: user.name,
     email: user.email,
+    phoneNumber: user.phoneNumber,
+    country: user.country,
     role: user.role,
     ageGroup: user.ageGroup,
     avatar: user.avatar,

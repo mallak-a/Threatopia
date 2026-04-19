@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, User, AlertCircle } from 'lucide-react'
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, User, AlertCircle, Phone, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import type { AgeGroup } from '@/lib/types'
+import { COUNTRIES } from '@/lib/constants/countries'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -20,6 +21,8 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phonePart: '',
+    country: '',
     password: '',
     ageGroup: '' as AgeGroup | '',
   })
@@ -30,9 +33,14 @@ export default function RegisterPage() {
     
     if (!formData.ageGroup) return
     
+    const selectedCountry = COUNTRIES.find(c => c.name === formData.country)
+    const fullPhoneNumber = selectedCountry ? `${selectedCountry.dialCode} ${formData.phonePart}` : formData.phonePart
+    
     const success = await register({
       name: formData.name,
       email: formData.email,
+      phoneNumber: fullPhoneNumber,
+      country: formData.country,
       password: formData.password,
       ageGroup: formData.ageGroup,
     })
@@ -118,6 +126,48 @@ export default function RegisterPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Select
+                value={formData.country}
+                onValueChange={(value) => setFormData({ ...formData, country: value })}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your country" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {COUNTRIES.map((c) => (
+                    <SelectItem key={c.code} value={c.name}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <div className="flex gap-2">
+                <div className="w-24 bg-muted/50 border border-input rounded-md flex items-center justify-center text-sm text-muted-foreground select-none">
+                  {formData.country ? COUNTRIES.find(c => c.name === formData.country)?.dialCode : '+00'}
+                </div>
+                <div className="relative flex-1">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="555-000-0000"
+                    className="pl-10"
+                    value={formData.phonePart}
+                    onChange={(e) => setFormData({ ...formData, phonePart: e.target.value })}
+                    required
+                    disabled={!formData.country}
+                  />
+                </div>
               </div>
             </div>
 

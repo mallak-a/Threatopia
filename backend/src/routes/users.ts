@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { authMiddleware } from '../middleware/auth'
-import { findProfileByUserId, getNotificationsForUser, updateUserAvatar } from '../data'
+import { findProfileByUserId, getNotificationsForUser, updateUserAvatar, updateUserContact } from '../data'
 import type { User } from '../types'
 import multer from 'multer'
 import path from 'path'
@@ -84,6 +84,42 @@ router.post('/upload-profile-photo', authMiddleware, upload.single('profilePhoto
     console.error('Error uploading profile photo:', error)
     return res.status(500).json({ success: false, error: 'Failed to upload profile photo' })
   }
+})
+
+router.patch('/contact', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id
+  if (!userId) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' })
+  }
+
+  const { phoneNumber, country } = req.body
+  
+  // Basic validation if phoneNumber is provided
+  if (phoneNumber) {
+    const phoneRegex = /^\+?[0-9\s\-\(\)]{7,20}$/
+    if (!phoneRegex.test(phoneNumber)) {
+      return res.status(400).json({ success: false, error: 'Invalid phone number format' })
+    }
+  }
+
+  const updatedUser = await updateUserContact(userId, { phoneNumber, country })
+  if (!updatedUser) {
+    return res.status(500).json({ success: false, error: 'Failed to update contact info' })
+  }
+
+  const responseUser: User = {
+    id: updatedUser.id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    phoneNumber: updatedUser.phoneNumber,
+    country: updatedUser.country,
+    role: updatedUser.role,
+    ageGroup: updatedUser.ageGroup,
+    avatar: updatedUser.avatar,
+    createdAt: updatedUser.createdAt,
+  }
+
+  return res.json({ success: true, data: responseUser })
 })
 
 // Multer error handling middleware — catches file-too-large, wrong type, etc.

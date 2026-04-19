@@ -140,6 +140,11 @@ export async function login(credentials: AuthCredentials): Promise<ApiResponse<A
       localStorage.setItem('threatopia_token', result.data.token)
       return result
     }
+
+    // If the API responded with an error (not a connection issue), return the error
+    if (!result.success && result.error && !['fetch failed', 'Network error', 'Request timeout'].includes(result.error)) {
+      return result
+    }
   }
 
   // Mock fallback
@@ -147,20 +152,15 @@ export async function login(credentials: AuthCredentials): Promise<ApiResponse<A
   
   if (credentials.email === 'demo@threatopia.com' && credentials.password === 'demo123') {
     const mockResponse: AuthResponse = {
-      user: { id: 'user_1', name: 'Demo User', email: credentials.email, role: 'student' },
+      user: { id: 'user_1', name: 'Demo User', email: credentials.email, role: 'student', phoneNumber: '+1 555-000-0000', country: 'United States' },
       token: 'mock_jwt_token_' + Date.now(),
     }
     localStorage.setItem('threatopia_token', mockResponse.token)
     return { success: true, data: mockResponse }
   }
 
-  // Accept any email/password for demo purposes
-  const mockResponse: AuthResponse = {
-    user: { id: 'user_new', name: 'New User', email: credentials.email, role: 'student' },
-    token: 'mock_jwt_token_' + Date.now(),
-  }
-  localStorage.setItem('threatopia_token', mockResponse.token)
-  return { success: true, data: mockResponse }
+  // Reject invalid credentials for mock
+  return { success: false, error: 'Invalid email or password' }
 }
 
 export async function register(data: RegisterData): Promise<ApiResponse<AuthResponse>> {
@@ -180,7 +180,7 @@ export async function register(data: RegisterData): Promise<ApiResponse<AuthResp
   await new Promise(resolve => setTimeout(resolve, 500))
   
   const mockResponse: AuthResponse = {
-    user: { id: 'user_' + Date.now(), name: data.name, email: data.email, role: 'student', ageGroup: data.ageGroup },
+    user: { id: 'user_' + Date.now(), name: data.name, email: data.email, phoneNumber: data.phoneNumber, country: data.country, role: 'student', ageGroup: data.ageGroup },
     token: 'mock_jwt_token_' + Date.now(),
   }
   localStorage.setItem('threatopia_token', mockResponse.token)
@@ -204,6 +204,22 @@ export async function getUserProfile(): Promise<ApiResponse<UserProfile>> {
   // Mock fallback
   await new Promise(resolve => setTimeout(resolve, 300))
   return { success: true, data: mockUserProfile }
+}
+
+export async function updateContactInfo(data: { phoneNumber?: string, country?: string }): Promise<ApiResponse<User>> {
+  if (shouldAttemptApi()) {
+    const result = await fetchWithTimeout<User>(`${API_BASE_URL}/users/contact`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    })
+
+    if (result.success) return result
+  }
+
+  // Mock fallback
+  await new Promise(resolve => setTimeout(resolve, 300))
+  return { success: true, data: { id: 'mock', name: 'Mock User', email: 'mock@example.com', phoneNumber: data.phoneNumber || '', country: data.country || '', role: 'student' } }
 }
 
 export async function getNotifications(): Promise<ApiResponse<Notification[]>> {

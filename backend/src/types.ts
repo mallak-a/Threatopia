@@ -1,4 +1,4 @@
-﻿export type AgeGroup = 'teen' | 'student' | 'professional'
+export type AgeGroup = 'teen' | 'student' | 'professional'
 export type UserRole = 'student' | 'instructor' | 'admin'
 export type ChallengeCategory = 'phishing' | 'sql_injection' | 'password_security' | 'social_engineering' | 'malware' | 'network_security'
 export type ChallengeDifficulty = 'beginner' | 'intermediate' | 'advanced' | 'expert'
@@ -8,6 +8,8 @@ export interface User {
   id: string
   name: string
   email: string
+  phoneNumber: string
+  country: string
   role: UserRole
   ageGroup?: AgeGroup
   avatar?: string
@@ -44,6 +46,8 @@ export interface AuthCredentials {
 
 export interface RegisterData extends AuthCredentials {
   name: string
+  phoneNumber: string
+  country: string
   ageGroup: AgeGroup
 }
 

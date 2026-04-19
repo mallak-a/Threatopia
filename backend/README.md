@@ -195,7 +195,7 @@ All endpoints are prefixed with `/api`. Protected routes require `Authorization:
 ### URL Detection
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/url-detection/check` | ✅ | Classify a URL as phishing or safe |
+| `POST` | `/api/url-detection/check` | — | Classify a URL as phishing or safe (public) |
 
 ### Simulations
 | Method | Path | Auth | Description |

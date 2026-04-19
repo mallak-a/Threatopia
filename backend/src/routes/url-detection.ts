@@ -1,11 +1,10 @@
 import { Router } from 'express'
-import { authMiddleware } from '../middleware/auth'
 import { spawn } from 'child_process'
 import path from 'path'
 
 const router = Router()
 
-router.post('/check', authMiddleware, (req, res) => {
+router.post('/check', (req, res) => {
   const url = String(req.body.url || '')
 
   if (!url) {
@@ -13,9 +12,10 @@ router.post('/check', authMiddleware, (req, res) => {
   }
 
   try {
-    // Call Python URL detection script
-    const scriptPath = path.join(__dirname, '../../../URL Detection/app.py')
-    const pythonProcess = spawn('python', [scriptPath, url], {
+    // Call Python URL detection script using the project's virtual environment
+    const scriptPath = path.join(__dirname, '../../../URL Detection/predict.py')
+    const pythonPath = path.join(__dirname, '../../../venv/Scripts/python.exe')
+    const pythonProcess = spawn(pythonPath, [scriptPath, url], {
       cwd: path.join(__dirname, '../../../URL Detection')
     })
 
@@ -32,16 +32,20 @@ router.post('/check', authMiddleware, (req, res) => {
 
     pythonProcess.on('close', (code) => {
       if (code === 0 && result.trim()) {
-        // Python script succeeded
-        const isPhishing = result.toLowerCase().includes('phishing') ||
-                          result.toLowerCase().includes('malicious') ||
-                          result.toLowerCase().includes('suspicious')
+        // Python script succeeded (Format: LABEL|CONFIDENCE)
+        const parts = result.trim().split('|')
+        const label = parts[0]
+        const confidenceValue = parts.length > 1 ? parseFloat(parts[1]) : 0.85
+
+        const isPhishing = label.toLowerCase().includes('phishing') ||
+                          label.toLowerCase().includes('malicious') ||
+                          label.toLowerCase().includes('suspicious')
 
         return res.json({
           success: true,
           data: {
             result: isPhishing ? 'phishing' : 'safe',
-            confidence: 0.85, // Could be parsed from Python output
+            confidence: confidenceValue,
             details: result.trim()
           },
         })

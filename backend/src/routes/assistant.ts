@@ -13,9 +13,10 @@ router.post('/chat', authMiddleware, (req, res) => {
   }
 
   try {
-    // Call Python chatbot script
+    // Call Python chatbot script using the project's virtual environment
     const scriptPath = path.join(__dirname, '../../../ChatBot/chatbot.py')
-    const pythonProcess = spawn('python', [scriptPath, message], {
+    const pythonPath = path.join(__dirname, '../../../venv/Scripts/python.exe')
+    const pythonProcess = spawn(pythonPath, [scriptPath, message], {
       cwd: path.join(__dirname, '../../../ChatBot')
     })
 

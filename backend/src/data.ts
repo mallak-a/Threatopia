@@ -23,6 +23,8 @@ export const getUsers = async (): Promise<UserWithPassword[]> => {
     id: user.id,
     name: user.name,
     email: user.email,
+    phoneNumber: user.phoneNumber,
+    country: user.country,
     password: user.password,
     role: user.role as UserRole,
     ageGroup: user.ageGroup as AgeGroup,
@@ -40,6 +42,8 @@ export const getUserById = async (id: string): Promise<UserWithPassword | undefi
     id: user.id,
     name: user.name,
     email: user.email,
+    phoneNumber: user.phoneNumber,
+    country: user.country,
     password: user.password,
     role: user.role as UserRole,
     ageGroup: user.ageGroup as AgeGroup,
@@ -57,6 +61,8 @@ export const getUserByEmail = async (email: string): Promise<UserWithPassword | 
     id: user.id,
     name: user.name,
     email: user.email,
+    phoneNumber: user.phoneNumber,
+    country: user.country,
     password: user.password,
     role: user.role as UserRole,
     ageGroup: user.ageGroup as AgeGroup,
@@ -228,6 +234,8 @@ export async function createUser(data: RegisterData, password: string): Promise<
     data: {
       name: data.name,
       email: data.email,
+      phoneNumber: data.phoneNumber,
+      country: data.country,
       password: hashedPassword,
       role: 'student',
       ageGroup: data.ageGroup,
@@ -253,11 +261,41 @@ export async function createUser(data: RegisterData, password: string): Promise<
     id: user.id,
     name: user.name,
     email: user.email,
+    phoneNumber: user.phoneNumber,
+    country: user.country,
     password: user.password,
     role: user.role as UserRole,
     ageGroup: user.ageGroup as AgeGroup,
     avatar: user.avatar || undefined,
     createdAt: user.createdAt.toISOString(),
+  }
+}
+
+export async function updateUserContact(userId: string, data: { phoneNumber?: string, country?: string }): Promise<UserWithPassword | undefined> {
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.phoneNumber !== undefined && { phoneNumber: data.phoneNumber }),
+        ...(data.country !== undefined && { country: data.country }),
+      },
+    })
+    
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      country: user.country,
+      password: user.password,
+      role: user.role as UserRole,
+      ageGroup: user.ageGroup as AgeGroup,
+      avatar: user.avatar || undefined,
+      createdAt: user.createdAt.toISOString(),
+    }
+  } catch (error) {
+    console.error('Error updating user contact:', error)
+    return undefined
   }
 }
 
@@ -314,6 +352,8 @@ export async function updateUserAvatar(userId: string, avatarUrl: string): Promi
       id: user.id,
       name: user.name,
       email: user.email,
+      phoneNumber: user.phoneNumber,
+      country: user.country,
       role: user.role as UserRole,
       ageGroup: user.ageGroup as AgeGroup,
       avatar: user.avatar || undefined,

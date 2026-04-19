@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import math
 import re
@@ -14,10 +14,11 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 
-DATA_DIR = 'data'
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR, 'data')
 QA_PATH = os.path.join(DATA_DIR, 'cybersecurity-qa-v1.csv')
 G6_PATH = os.path.join(DATA_DIR, '6G_Network_Slicing_Security_DatasetR.csv')
-MODEL_DIR = 'models'
+MODEL_DIR = os.path.join(SCRIPT_DIR, 'models')
 URL_MODEL_PATH = os.path.join(MODEL_DIR, 'rf_url_model.pkl')
 TFIDF_VECT_PATH = os.path.join(MODEL_DIR, 'tfidf_vectorizer.pkl')
 TFIDF_MATRIX_PATH = os.path.join(MODEL_DIR, 'tfidf_matrix.pkl')
@@ -30,6 +31,7 @@ try:
     word_tokenize('test')
 except LookupError:
     nltk.download('punkt')
+    nltk.download('punkt_tab')
     nltk.download('stopwords')
     nltk.download('wordnet')
 
@@ -435,12 +437,20 @@ def load_models():
     sys.path = [p for p in sys.path if p != current_dir]
     from transformers import T5Tokenizer, T5ForConditionalGeneration
     gen_tokenizer = T5Tokenizer.from_pretrained(T5_TOKENIZER_DIR)
-    gen_model = T5ForConditionalGeneration.from_pretrained(T5_MODEL_DIR)
+    gen_model = T5ForConditionalGeneration.from_pretrained(T5_MODEL_DIR, tie_word_embeddings=False)
     url_model = load_url_classifier()
     g6_insight = load_6g_insight()
 
 
 def main():
+    if len(sys.argv) > 1:
+        # CLI mode for backend integration
+        question = sys.argv[1]
+        load_models()
+        answer = get_answer(question)
+        print(answer)
+        return
+
     print("Starting Cybersecurity Awareness Chatbot...")
     print("Loading models, please wait...")
     load_models()

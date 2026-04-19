@@ -18,6 +18,8 @@ export interface User {
   id: string
   name: string
   email: string
+  phoneNumber: string
+  country: string
   role: UserRole
   ageGroup?: AgeGroup
   avatar?: string
@@ -51,6 +53,8 @@ export interface AuthCredentials {
 
 export interface RegisterData extends AuthCredentials {
   name: string
+  phoneNumber: string
+  country: string
   ageGroup: AgeGroup
 }
 

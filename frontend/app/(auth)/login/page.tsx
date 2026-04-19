@@ -94,15 +94,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -123,6 +115,14 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-primary hover:underline mt-1"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <Button
@@ -141,14 +141,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Demo credentials hint */}
-          <div className="mt-6 p-3 rounded-lg bg-secondary/50 border border-border">
-            <p className="text-xs text-muted-foreground text-center">
-              Demo: Use any email/password to login, or try{' '}
-              <span className="text-primary font-mono">demo@threatopia.com</span> / 
-              <span className="text-primary font-mono"> demo123</span>
-            </p>
-          </div>
 
           {/* Sign up link */}
           <p className="mt-6 text-center text-sm text-muted-foreground">

@@ -141,3 +141,10 @@ venv/
 .venv/
 env/
 .env/
+
+# -----------------------------------------------------------------------------
+# Large AI Models (Ignored for GitHub)
+# -----------------------------------------------------------------------------
+ChatBot/
+URL Detection/
+Primary Black BgRemover.png

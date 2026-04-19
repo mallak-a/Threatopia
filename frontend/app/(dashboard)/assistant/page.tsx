@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
+import { api } from '@/lib/services/api'
+
 type Message = {
   id: string
   role: 'user' | 'assistant'
@@ -47,13 +49,14 @@ export default function AssistantPage() {
     scrollToBottom()
   }, [messages, isTyping])
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
     if (!content.trim()) return
 
+    const userMessage = content.trim()
     const newMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content,
+      content: userMessage,
       timestamp: new Date()
     }
 
@@ -61,17 +64,33 @@ export default function AssistantPage() {
     setInputValue('')
     setIsTyping(true)
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await api.assistant.sendMessage(userMessage)
+      
+      const reply = response.success && response.data 
+        ? response.data.reply 
+        : "I'm having trouble connecting to my brain right now. Please try again later."
+
       const responseMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `I've analyzed your request regarding "${content}". This looks like a perfect opportunity to dive deeper into our threat models. Would you like me to open the relevant simulation environment or provide a theoretical breakdown first?`,
+        content: reply,
         timestamp: new Date()
       }
+      
       setMessages(prev => [...prev, responseMessage])
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I encountered an error. Please check your connection and try again.",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -103,70 +122,68 @@ export default function AssistantPage() {
         <Card className="flex flex-col flex-1 border-neon-blue/20 bg-background/50 glass relative overflow-hidden">
           <div className="absolute inset-0 cyber-grid opacity-30 pointer-events-none" />
           
-          <ScrollArea className="flex-1 p-4 w-full">
-            <div className="space-y-6 pb-4">
-              <AnimatePresence initial={false}>
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={cn(
-                      "flex gap-4 max-w-[85%]",
-                      message.role === 'user' ? "ml-auto flex-row-reverse" : ""
-                    )}
-                  >
-                    <Avatar className={cn(
-                      "h-10 w-10 border-2",
-                      message.role === 'assistant' ? "border-neon-cyan shadow-[0_0_10px_rgba(0,212,255,0.3)]" : "border-primary"
-                    )}>
-                      <AvatarFallback className={message.role === 'assistant' ? "bg-navy-deep" : "bg-primary/20"}>
-                        {message.role === 'assistant' ? (
-                          <Bot className="h-6 w-6 text-neon-cyan" />
-                        ) : (
-                          <User className="h-6 w-6 text-primary" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className={cn(
-                      "rounded-2xl p-4 relative z-10",
-                      message.role === 'user' 
-                        ? "bg-primary/10 text-foreground rounded-tr-sm border border-primary/20" 
-                        : "bg-navy-mid/80 text-foreground rounded-tl-sm neon-border glass-light"
-                    )}>
-                      <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
-                        {message.content}
-                      </p>
-                      <span className="text-[10px] text-muted-foreground mt-2 block opacity-70">
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              
-              {isTyping && (
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-neon-blue/30 scrollbar-track-transparent">
+            <AnimatePresence initial={false}>
+              {messages.map((message) => (
                 <motion.div
+                  key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-4 max-w-[80%]"
+                  className={cn(
+                    "flex gap-4 max-w-[85%]",
+                    message.role === 'user' ? "ml-auto flex-row-reverse" : ""
+                  )}
                 >
-                  <Avatar className="h-10 w-10 border-2 border-neon-cyan neon-glow-sm">
-                    <AvatarFallback className="bg-navy-deep">
-                      <Bot className="h-6 w-6 text-neon-cyan" />
+                  <Avatar className={cn(
+                    "h-10 w-10 border-2",
+                    message.role === 'assistant' ? "border-neon-cyan shadow-[0_0_10px_rgba(0,212,255,0.3)]" : "border-primary"
+                  )}>
+                    <AvatarFallback className={message.role === 'assistant' ? "bg-navy-deep" : "bg-primary/20"}>
+                      {message.role === 'assistant' ? (
+                        <Bot className="h-6 w-6 text-neon-cyan" />
+                      ) : (
+                        <User className="h-6 w-6 text-primary" />
+                      )}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-navy-mid/80 rounded-2xl rounded-tl-sm p-4 neon-border flex items-center gap-1">
-                    <span className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  
+                  <div className={cn(
+                    "rounded-2xl p-4 relative z-10",
+                    message.role === 'user' 
+                      ? "bg-primary/10 text-foreground rounded-tr-sm border border-primary/20" 
+                      : "bg-navy-mid/80 text-foreground rounded-tl-sm neon-border glass-light"
+                  )}>
+                    <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground mt-2 block opacity-70">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </motion.div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
+              ))}
+            </AnimatePresence>
+            
+            {isTyping && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-4 max-w-[80%]"
+              >
+                <Avatar className="h-10 w-10 border-2 border-neon-cyan neon-glow-sm">
+                  <AvatarFallback className="bg-navy-deep">
+                    <Bot className="h-6 w-6 text-neon-cyan" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-navy-mid/80 rounded-2xl rounded-tl-sm p-4 neon-border flex items-center gap-1">
+                  <span className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </motion.div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
           {/* Input Area */}
           <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-md relative z-10">
@@ -192,16 +209,23 @@ export default function AssistantPage() {
                 e.preventDefault()
                 handleSendMessage(inputValue)
               }}
-              className="flex gap-2"
+              className="flex items-end gap-2"
             >
               <div className="relative flex-1 group">
-                <Input
+                <textarea
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendMessage(inputValue)
+                    }
+                  }}
                   placeholder="Ask about threats, tools, or request analysis..."
-                  className="pl-4 pr-12 py-6 bg-navy-mid/50 border-neon-blue/30 focus-visible:ring-neon-blue group-hover:border-neon-blue/50 transition-colors rounded-xl text-base"
+                  rows={1}
+                  className="w-full pl-4 pr-12 py-3 bg-navy-mid/50 border border-neon-blue/30 focus:border-neon-blue focus:ring-1 focus:ring-neon-blue group-hover:border-neon-blue/50 transition-colors rounded-xl text-base resize-none min-h-[52px] max-h-[200px] scrollbar-thin scrollbar-thumb-neon-blue/20"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <div className="absolute right-3 bottom-3 flex items-center gap-2">
                   <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-neon-cyan">
                     <Paperclip className="h-4 w-4" />
                   </Button>
@@ -211,7 +235,7 @@ export default function AssistantPage() {
                 type="submit" 
                 size="icon" 
                 disabled={!inputValue.trim() || isTyping}
-                className="h-[52px] w-[52px] rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_15px_rgba(var(--neon-blue),0.4)] transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                className="h-[52px] w-[52px] shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_15px_rgba(var(--neon-blue),0.4)] transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
               >
                 <Send className="h-5 w-5" />
                 <span className="sr-only">Send message</span>

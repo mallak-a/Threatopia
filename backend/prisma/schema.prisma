@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // Enums
@@ -66,15 +65,17 @@ enum SimulationStatus {
 
 // Models
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      UserRole @default(student)
-  ageGroup  AgeGroup?
-  avatar    String?
-  status    UserStatus @default(active)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  phoneNumber String
+  country     String
+  password    String
+  role        UserRole @default(student)
+  ageGroup    AgeGroup?
+  avatar      String?
+  status      UserStatus @default(active)
+  createdAt   DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
