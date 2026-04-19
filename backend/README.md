@@ -1,14 +1,17 @@
 # Threatopia Backend
 
-A RESTful API for the **Threatopia** cybersecurity learning platform built with **Express.js** and **TypeScript**.
+A RESTful API for the **Threatopia** cybersecurity learning platform, built with **Express.js**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**.
+
+---
 
 ## 🚀 Installation
 
 ### Prerequisites
 
-- **Node.js** (v18 or higher)
-- **npm** (v9 or higher)
-- **Git**
+- **Node.js** v18 or higher
+- **npm** v9 or higher
+- **PostgreSQL** — a running database instance
+- **Python 3** — for the AI chatbot and URL detection services
 
 ### Install Dependencies
 
@@ -19,21 +22,54 @@ npm install
 
 ### Environment Configuration
 
-Create a `.env` file in the `backend` directory with these values:
+Create a `.env` file in the `backend/` directory:
+
+```bash
+cp .env.example .env
+```
+
+Then open `.env` and fill in your values:
 
 ```env
 PORT=5000
 NODE_ENV=development
-JWT_SECRET=your_jwt_secret_key_here
+JWT_SECRET=your_super_secret_jwt_key_here
+DATABASE_URL=postgresql://username:password@localhost:5432/threatopia
 ```
 
-Example:
+---
 
-```env
-PORT=5000
-NODE_ENV=development
-JWT_SECRET=super_secret_jwt_key_12345
+## 🗄️ Database Setup
+
+From the **repository root**, run the automated setup script:
+
+```bash
+npm run setup-db
 ```
+
+This will:
+1. Generate the Prisma client
+2. Apply all database migrations (creates all tables)
+3. Seed the database with sample users, challenges, and leaderboard data
+
+### Manual commands (from `backend/` directory)
+
+```bash
+npm run db:generate    # Generate Prisma client from schema.prisma
+npm run db:migrate     # Apply database migrations (interactive dev mode)
+npm run db:seed        # Seed with sample data
+npm run db:studio      # Open Prisma Studio (visual database browser)
+```
+
+### Demo accounts (created by the seed)
+
+| Role | Email | Password |
+|---|---|---|
+| Student | `alex@example.com` | `demo123` |
+| Student | `sarah@example.com` | `demo123` |
+| Admin | `admin@threatopia.com` | `admin123` |
+
+---
 
 ## 🛠️ Development
 
@@ -43,98 +79,151 @@ JWT_SECRET=super_secret_jwt_key_12345
 npm run dev
 ```
 
-The server runs with hot reload and serves the API under `http://localhost:5000/api`.
+Starts with hot reload via `ts-node-dev`. The server listens at **http://localhost:5000/api**.
 
 ### Build for production
 
 ```bash
-npm run build
+npm run build    # Compiles TypeScript to dist/
+npm start        # Runs the compiled dist/server.js
 ```
 
-### Start the production server
-
-```bash
-npm start
-```
-
-### Database and Prisma
-
-```bash
-npm run db:migrate
-npm run db:generate
-npm run db:studio
-npm run db:seed
-```
+---
 
 ## 📂 Project Structure
 
 ```
 backend/
 ├── src/
-│   ├── server.ts              # Main Express server setup
-│   ├── types.ts               # TypeScript type definitions
-│   ├── data.ts                # Mock database and seed data
-│   ├── utils.ts               # Utility functions
+│   ├── server.ts              # Express app, CORS, route mounting
+│   ├── data.ts                # Data-access layer (all Prisma CRUD wrappers)
+│   ├── types.ts               # Shared TypeScript interfaces and types
+│   ├── utils.ts               # JWT sign / verify helpers
+│   ├── lib/
+│   │   └── prisma.ts          # Singleton Prisma client (with pg adapter)
 │   ├── middleware/
-│   │   └── auth.ts            # JWT authentication middleware
+│   │   └── auth.ts            # authMiddleware + adminMiddleware
 │   └── routes/
-│       ├── health.ts          # Health check routes
-│       ├── auth.ts            # Authentication routes
-│       ├── users.ts           # User profile routes
-│       ├── challenges.ts      # Challenge routes
-│       ├── leaderboard.ts     # Leaderboard routes
-│       ├── simulations.ts     # Simulation routes
-│       ├── assistant.ts       # AI assistant routes
-│       └── admin.ts           # Admin routes
+│       ├── health.ts          # GET /api/health
+│       ├── auth.ts            # POST /api/auth/register, /login
+│       ├── users.ts           # GET /profile, /notifications, POST /upload-profile-photo
+│       ├── challenges.ts      # GET /, /:id   POST /:id/attempt
+│       ├── leaderboard.ts     # GET /
+│       ├── assistant.ts       # POST /chat  (spawns Python chatbot)
+│       ├── url-detection.ts   # POST /check (spawns Python URL detector)
+│       ├── simulations.ts     # GET /
+│       └── admin.ts           # Analytics, users, challenges, reports
+├── prisma/
+│   ├── schema.prisma          # Database schema — models and enums
+│   ├── seed.ts                # Sample data seeder (tsx)
+│   └── migrations/            # Auto-generated migration history
+├── uploads/                   # Profile photo upload directory (git-ignored)
 ├── .env                       # Environment variables (not committed)
-├── .gitignore                 # Git ignore rules
-├── package.json               # Dependencies and scripts
-├── tsconfig.json              # TypeScript configuration
-└── README.md                  # This file
+├── .env.example               # Template for .env
+├── .gitignore
+├── package.json
+├── tsconfig.json
+└── README.md
 ```
+
+---
+
+## 🗃️ Database Schema
+
+The Prisma schema defines the following models:
+
+| Model | Description |
+|---|---|
+| `User` | Core user account (name, email, hashed password, role, avatar) |
+| `UserProfile` | Points, level, badges, skill scores, streak, completed challenges |
+| `Challenge` | Security challenges with category, difficulty, hints, code snippets |
+| `ChallengeAttempt` | Per-user attempt record with correctness and points earned |
+| `LeaderboardEntry` | Global rankings with rank, points, and level |
+| `Simulation` | Simulation scenarios with status and duration |
+| `Notification` | In-app notifications for achievements, challenges, and system events |
+
+### Enums
+
+- `UserRole` — `student` | `instructor` | `admin`
+- `AgeGroup` — `teen` | `student` | `professional`
+- `ChallengeCategory` — `phishing` | `sql_injection` | `password_security` | `social_engineering` | `malware` | `network_security`
+- `ChallengeDifficulty` — `beginner` | `intermediate` | `advanced` | `expert`
+- `UserStatus` — `active` | `inactive` | `banned`
+- `SimulationStatus` — `available` | `coming_soon` | `maintenance`
+
+---
 
 ## 🔌 API Endpoints
 
-### Health & status
-- `GET /api/health` - health check endpoint
-- `GET /api/maintenance` - maintenance status
+All endpoints are prefixed with `/api`. Protected routes require `Authorization: Bearer <token>`.
+
+### Health
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/health` | — | Server health check |
 
 ### Authentication
-- `POST /api/auth/register` - register a new user
-- `POST /api/auth/login` - login and obtain a JWT token
-
-### Challenges
-- `GET /api/challenges` - list all challenges
-- `GET /api/challenges/:id` - get a single challenge
-- `POST /api/challenges/:id/attempt` - submit a challenge attempt
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | — | Register new user (creates profile) |
+| `POST` | `/api/auth/login` | — | Login and receive JWT |
 
 ### Users
-- `GET /api/users/profile` - get current user profile *(protected)*
-- `GET /api/users/notifications` - get user notifications *(protected)*
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/users/profile` | ✅ | Get current user profile |
+| `GET` | `/api/users/notifications` | ✅ | Get user notifications |
+| `POST` | `/api/users/upload-profile-photo` | ✅ | Upload avatar (multipart/form-data, max 5 MB) |
+
+### Challenges
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/challenges` | — | List challenges (filter by `?category=&difficulty=`) |
+| `GET` | `/api/challenges/:id` | — | Get a single challenge |
+| `POST` | `/api/challenges/:id/attempt` | ✅ | Submit a challenge attempt |
 
 ### Leaderboard
-- `GET /api/leaderboard` - get leaderboard rankings
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/leaderboard` | — | Global leaderboard (`?type=global\|friends`) |
 
 ### AI Assistant
-- `POST /api/assistant/chat` - chat with the AI assistant *(protected)*
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/assistant/chat` | ✅ | Chat with the Python AI chatbot |
+
+### URL Detection
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/url-detection/check` | ✅ | Classify a URL as phishing or safe |
 
 ### Simulations
-- `GET /api/simulations` - list available simulations
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/simulations` | — | List available simulations |
 
-### Admin routes *(protected, admin only)*
-- `GET /api/admin/analytics` - get analytics
-- `GET /api/admin/users` - list all users
-- `POST /api/admin/challenges` - create a new challenge
-- `PATCH /api/admin/users/:userId/role` - update a user role
-- `GET /api/admin/reports/:userId` - get user reports
+### Admin *(admin role required)*
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/admin/analytics` | ✅ admin | Platform-wide analytics |
+| `GET` | `/api/admin/users` | ✅ admin | List all users |
+| `POST` | `/api/admin/challenges` | ✅ admin | Create a new challenge |
+| `PATCH` | `/api/admin/users/:userId/role` | ✅ admin | Update a user's role |
+| `GET` | `/api/admin/reports/:userId` | ✅ admin | Get user progress report |
+
+---
 
 ## 🔐 Authentication
 
-### JWT tokens
+Protected routes require a valid JWT token in the `Authorization` header:
 
-Protected routes require a valid JWT token in the `Authorization` header.
+```
+Authorization: Bearer <your_jwt_token>
+```
 
-#### Example login request
+Tokens are issued at login and expire after **7 days**.
+
+### Example login
 
 ```bash
 curl -X POST http://localhost:5000/api/auth/login \
@@ -142,60 +231,31 @@ curl -X POST http://localhost:5000/api/auth/login \
   -d '{"email": "alex@example.com", "password": "demo123"}'
 ```
 
-#### Example protected request
+### Example protected request
 
 ```bash
-curl -H "Authorization: Bearer <your_jwt_token>" \
-  http://localhost:5000/api/users/profile
+curl -H "Authorization: Bearer <token>" http://localhost:5000/api/users/profile
 ```
 
-#### Default test credentials
-
-```text
-User: alex@example.com
-Password: demo123
-Role: student
-
-Admin: admin@threatopia.com
-Password: admin123
-Role: admin
-```
+---
 
 ## 📝 Notes
 
-- The backend exposes all API routes under `/api`
-- Use a strong secret for `JWT_SECRET` in production
-- `.env` should never be committed to version control
+- All API responses use the shape `{ success: true, data: ... }` or `{ success: false, error: "..." }`
+- Category values in the database use `snake_case` (e.g. `sql_injection`); the frontend types use `kebab-case` — the data layer normalises this automatically
+- Uploaded profile photos are stored in `backend/uploads/` and served at `/uploads/<filename>`
+- Use a strong random string for `JWT_SECRET` in production
+- Never commit `.env` to version control
 
-
-- The backend currently uses **in-memory mock data** stored in `src/data.ts`
-- Data is not persisted between server restarts
-- A real database (MongoDB, PostgreSQL, etc.) should be added for production
-- CORS is enabled to allow requests from the frontend (http://localhost:3000)
-- All passwords are hashed using bcryptjs
-
-## 🚀 Next Steps
-
-1. **Implement Database** - Replace mock data with a real database
-2. **Add Validation** - Implement request validation middleware
-3. **Error Handling** - Add comprehensive error handling
-4. **Testing** - Add unit and integration tests
-5. **Documentation** - Generate API documentation with Swagger/OpenAPI
-
-## 🤝 Contributing
-
-1. Create a new branch for your feature
-2. Make your changes
-3. Test thoroughly
-4. Submit a pull request
+---
 
 ## 📚 Resources
 
+- [Prisma Documentation](https://www.prisma.io/docs)
 - [Express.js Documentation](https://expressjs.com)
 - [TypeScript Documentation](https://www.typescriptlang.org)
-- [JWT.io](https://jwt.io) - JWT info and debugging
-- [Bcryptjs Documentation](https://github.com/dcodeIO/bcryptjs)
-- [CORS Documentation](https://github.com/expressjs/cors)
+- [JWT.io](https://jwt.io)
+- [Bcryptjs](https://github.com/dcodeIO/bcryptjs)
 
 ---
 

@@ -72,7 +72,7 @@ async function fetchWithTimeout<T>(
       ...options,
       signal: controller.signal,
       headers: {
-        ...contentTypeHeader,
+        ...(contentTypeHeader as Record<string, string>),
         ...options.headers,
       },
     })
@@ -353,6 +353,36 @@ export async function sendAssistantMessage(
   return { success: true, data: response }
 }
 
+// ==================== URL Detection ====================
+export async function checkUrl(url: string): Promise<ApiResponse<{ result: string; confidence: number; details?: string }>> {
+  if (shouldAttemptApi()) {
+    const result = await fetchWithTimeout<{ result: string; confidence: number; details?: string }>(
+      `${API_BASE_URL}/url-detection/check`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ url }),
+      }
+    )
+
+    if (result.success) return result
+  }
+
+  // Mock fallback - simple URL analysis
+  await new Promise(resolve => setTimeout(resolve, 800))
+  
+  const isSuspicious = url.includes('login') && (url.includes('bank') || url.includes('paypal') || url.includes('amazon'))
+  
+  return { 
+    success: true, 
+    data: { 
+      result: isSuspicious ? 'phishing' : 'safe', 
+      confidence: isSuspicious ? 0.75 : 0.85,
+      details: isSuspicious ? 'URL contains suspicious keywords' : 'URL appears safe'
+    } 
+  }
+}
+
 // ==================== Simulations ====================
 export async function getSimulations(): Promise<ApiResponse<Simulation[]>> {
   if (shouldAttemptApi()) {
@@ -463,6 +493,9 @@ export const api = {
   },
   assistant: {
     sendMessage: sendAssistantMessage,
+  },
+  urlDetection: {
+    check: checkUrl,
   },
   simulations: {
     getAll: getSimulations,
