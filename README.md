@@ -206,6 +206,29 @@ Install frontend and backend dependencies:
 cd frontend && npm install
 cd ../backend && npm install
 cd ..
+
+### AI Services Setup (Python)
+
+Threatopia requires Python 3 for its AI features. Follow these steps to set up the environment:
+
+1. **Create and activate the virtual environment:**
+   ```bash
+   python -m venv venv
+   # On Windows:
+   .\venv\Scripts\activate
+   # On macOS/Linux:
+   source venv/bin/activate
+   ```
+
+2. **Install required Python packages:**
+   ```bash
+   pip install numpy pandas scikit-learn joblib nltk transformers torch
+   ```
+
+3. **Download NLTK data:**
+   ```bash
+   python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
+   ```
 ```
 
 ---
