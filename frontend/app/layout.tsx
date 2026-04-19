@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { FloatingAIAssistant } from '@/components/floating-ai-assistant'
 import './globals.css'
 
 const inter = Inter({
@@ -68,6 +69,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <FloatingAIAssistant />
           <Toaster />
         </ThemeProvider>
         <Analytics />
