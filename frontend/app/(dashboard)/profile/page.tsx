@@ -70,11 +70,14 @@ export default function ProfilePage() {
     bio: "Cybersecurity enthusiast passionate about CTF challenges and ethical hacking.",
   })
 
-  const BACKEND_BASE_URL = 'http://localhost:5000'
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+  const BACKEND_BASE_URL = API_URL.replace(/\/api$/, '')
 
   const normalizeAvatarUrl = (url?: string) => {
     if (!url) return undefined
-    return url.startsWith('/uploads') ? `${BACKEND_BASE_URL}${url}` : url
+    if (url.startsWith('http')) return url
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`
+    return `${BACKEND_BASE_URL}${cleanUrl}`
   }
 
   const displayAvatar = previewUrl || normalizeAvatarUrl(user?.avatar)
@@ -139,24 +142,27 @@ export default function ProfilePage() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      setSelectedFile(file)
-      const url = URL.createObjectURL(file)
-      setCropSourceUrl(url)
-      setRotation(0)
-      setZoom(1)
-      setPanPosition({ x: 0, y: 0 })
-      setCropDialogOpen(true)
-      setUploadMessage(null)
+    setSelectedFile(file)
+    const url = URL.createObjectURL(file)
+    setCropSourceUrl(url)
+    setRotation(0)
+    setZoom(1)
+    setPanPosition({ x: 0, y: 0 })
+    setCropDialogOpen(true)
+    setUploadMessage(null)
 
-      // Load the image to get its natural dimensions
-      const img = new Image()
-      img.onload = () => {
-        setImageSize({ w: img.naturalWidth, h: img.naturalHeight })
-        // Enforce minimum zoom for the loaded image
-        const minZ = getMinZoom(img.naturalWidth, img.naturalHeight)
-        if (1 < minZ) setZoom(minZ)
-      }
-      img.src = url
+    // Load the image to get its natural dimensions
+    const img = new Image()
+    img.onload = () => {
+      console.log('Image dimensions:', img.naturalWidth, img.naturalHeight)
+      setImageSize({ w: img.naturalWidth, h: img.naturalHeight })
+      // Default to zoom 1 (fitted to container)
+      setZoom(1)
+    }
+    img.onerror = () => console.log('Image failed to load')
+
+    img.src = url
+
     }
   }
 
@@ -212,10 +218,19 @@ export default function ProfilePage() {
 
   const handleZoomChange = (newZoom: number) => {
     const minZ = getMinZoom(imageSize.w, imageSize.h)
-    const clampedZoom = Math.max(minZ, newZoom)
+    // Allow zooming out slightly past minZ if requested, but clamp to 0.1 minimum
+    const clampedZoom = Math.max(0.1, Math.min(10, newZoom))
     setZoom(clampedZoom)
     // Re-clamp pan with new zoom
     setPanPosition((prev) => clampPan(prev, imageSize.w, imageSize.h, clampedZoom))
+  }
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    // Zoom sensitivity: adjust based on wheel delta
+    // Use a small factor for smooth zooming with touchpad/mouse
+    const delta = -e.deltaY * 0.001
+    const newZoom = zoom + delta
+    handleZoomChange(newZoom)
   }
 
   const handleCrop = () => {
@@ -325,6 +340,9 @@ export default function ProfilePage() {
     setIsUploading(true)
     setUploadMessage(null)
     let uploadSucceeded = true
+    
+    // Use a local copy to track updates and avoid stale state from the closure
+    let currentUser = user ? { ...user } : null
 
     // Handle profile photo upload
     if (selectedFile) {
@@ -357,9 +375,12 @@ export default function ProfilePage() {
         
         if (response.ok) {
           const data = await response.json()
-          // Store the relative path from the backend; normalizeAvatarUrl handles display
-          const updatedUser: UserType = { ...user!, avatar: data.url }
-          updateUser(updatedUser)
+          // Update the local tracking object with the new avatar
+          if (currentUser) {
+            currentUser.avatar = data.url
+            // Update the store immediately for other components
+            updateUser({ ...currentUser })
+          }
           setUploadMessage('Profile photo uploaded successfully!')
           console.log('Profile photo uploaded:', data.url)
         } else {
@@ -382,8 +403,6 @@ export default function ProfilePage() {
       }
     }
 
-    setIsUploading(false)
-
     // Update other profile data (contact info)
     const selectedCountry = COUNTRIES.find(c => c.name === formData.country)
     const fullPhoneNumber = selectedCountry ? `${selectedCountry.dialCode} ${formData.phonePart}` : formData.phonePart
@@ -394,10 +413,17 @@ export default function ProfilePage() {
     })
 
     if (result.success && result.data) {
-      // Retain the current avatar if any, as it might have just been uploaded or already exists
-      const updatedUser: UserType = { ...user!, ...result.data, avatar: user?.avatar }
-      updateUser(updatedUser)
+      // Merge backend result with our tracked user to ensure avatar is preserved
+      // result.data should have the latest data from the backend
+      const finalUser: UserType = { 
+        ...result.data, 
+        avatar: result.data.avatar || currentUser?.avatar 
+      }
+      updateUser(finalUser)
+      currentUser = finalUser
     }
+
+    setIsUploading(false)
 
     // Only clear state and exit edit mode on success
     if (uploadSucceeded) {
@@ -492,13 +518,16 @@ export default function ProfilePage() {
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseUp}
+                        onWheel={handleWheel}
                       >
                         {cropSourceUrl ? (
                           <img
                             src={cropSourceUrl}
                             alt="Preview"
-                            className="absolute max-h-full max-w-full"
+                            className="absolute"
                             style={{
+                              width: getDrawnSize(imageSize.w, imageSize.h, 1).drawW,
+                              height: getDrawnSize(imageSize.w, imageSize.h, 1).drawH,
                               top: '50%',
                               left: '50%',
                               transform: `translate(calc(-50% + ${panPosition.x}px), calc(-50% + ${panPosition.y}px)) rotate(${rotation}deg) scale(${zoom})`,
