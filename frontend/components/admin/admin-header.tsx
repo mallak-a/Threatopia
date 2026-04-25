@@ -29,8 +29,18 @@ import { Badge } from "@/components/ui/badge"
 import { useAuthStore } from "@/lib/stores/auth-store"
 import { AdminSidebar } from "./admin-sidebar"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const BACKEND_BASE_URL = API_URL.replace(/\/api$/, '')
+
+const normalizeAvatarUrl = (url?: string) => {
+  if (!url) return undefined
+  if (url.startsWith('http')) return url
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`
+  return `${BACKEND_BASE_URL}${cleanUrl}`
+}
+
 export function AdminHeader() {
-  const { user, logout } = useAuthStore()
+  const { user, logout, previewAvatar } = useAuthStore()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -98,19 +108,27 @@ export function AdminHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={user?.avatar} alt={user?.username} />
+                <AvatarImage key={previewAvatar || user?.avatar} src={previewAvatar || normalizeAvatarUrl(user?.avatar)} alt={user?.username} className="object-cover" />
                 <AvatarFallback className="bg-destructive text-destructive-foreground">
                   {user?.username?.slice(0, 2).toUpperCase() || "AD"}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end">
-            <DropdownMenuLabel>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user?.username}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-                <Badge variant="destructive" className="w-fit text-xs">Administrator</Badge>
+          <DropdownMenuContent className="w-56 glass" align="end">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex items-center gap-3 py-1">
+                <Avatar className="h-9 w-9 border border-destructive/30">
+                  <AvatarImage key={previewAvatar || user?.avatar} src={previewAvatar || normalizeAvatarUrl(user?.avatar)} alt={user?.username} className="object-cover" />
+                  <AvatarFallback className="bg-destructive/20 text-destructive text-xs font-bold">
+                    {user?.username?.slice(0, 2).toUpperCase() || "AD"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col min-w-0">
+                  <p className="text-sm font-semibold truncate">{user?.username || 'Admin'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  <Badge variant="destructive" className="w-fit text-[10px] h-4 px-1.5 mt-0.5">Admin</Badge>
+                </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

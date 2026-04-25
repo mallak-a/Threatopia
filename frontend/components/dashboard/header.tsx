@@ -26,20 +26,23 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuthStore } from '@/lib/stores/auth-store'
 
-const BACKEND_BASE_URL = 'http://localhost:5000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const BACKEND_BASE_URL = API_URL.replace(/\/api$/, '')
 
 const normalizeAvatarUrl = (url?: string) => {
   if (!url) return undefined
-  return url.startsWith('/uploads') ? `${BACKEND_BASE_URL}${url}` : url
+  if (url.startsWith('http')) return url
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`
+  return `${BACKEND_BASE_URL}${cleanUrl}`
 }
 
 export function DashboardHeader() {
-  const { user, profile, notifications, logout } = useAuthStore()
+  const { user, profile, notifications, logout, previewAvatar } = useAuthStore()
   const [showSearch, setShowSearch] = useState(false)
   
   const unreadCount = notifications.filter(n => !n.read).length
   const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'
-  const avatarSrc = normalizeAvatarUrl(user?.avatar)
+  const avatarSrc = previewAvatar || normalizeAvatarUrl(user?.avatar)
 
   return (
     <header className="sticky top-0 z-30 glass border-b border-primary/10">
@@ -140,7 +143,7 @@ export function DashboardHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10 border-2 border-primary/30">
-                  <AvatarImage src={avatarSrc} alt={user?.name || 'User'} />
+                  <AvatarImage key={avatarSrc} src={avatarSrc} alt={user?.name || 'User'} className="object-cover" />
                   <AvatarFallback className="bg-primary/20 text-primary">
                     {initials}
                   </AvatarFallback>
@@ -149,9 +152,17 @@ export function DashboardHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 glass">
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user?.name || 'User'}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <div className="flex items-center gap-3 py-1">
+                  <Avatar className="h-9 w-9 border border-primary/30">
+                    <AvatarImage key={avatarSrc} src={avatarSrc} alt={user?.name || 'User'} className="object-cover" />
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-sm font-semibold truncate">{user?.name || 'User'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

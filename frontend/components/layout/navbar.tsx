@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion'
 import {
   Menu,
   X,
@@ -26,11 +26,14 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/stores/auth-store'
 
-const BACKEND_BASE_URL = 'http://localhost:5000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const BACKEND_BASE_URL = API_URL.replace(/\/api$/, '')
 
 function normalizeAvatarUrl(url?: string) {
   if (!url) return undefined
-  return url.startsWith('/uploads') ? `${BACKEND_BASE_URL}${url}` : url
+  if (url.startsWith('http')) return url
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`
+  return `${BACKEND_BASE_URL}${cleanUrl}`
 }
 
 const navItems = [
@@ -45,7 +48,7 @@ const navItems = [
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
-  const { isAuthenticated, user, logout } = useAuthStore()
+  const { isAuthenticated, user, logout, previewAvatar } = useAuthStore()
 
   const initials =
     user?.name
@@ -55,10 +58,26 @@ export function Navbar() {
       .toUpperCase()
       .slice(0, 2) || 'U'
 
-  const avatarSrc = normalizeAvatarUrl(user?.avatar)
+  const avatarSrc = previewAvatar || normalizeAvatarUrl(user?.avatar)
+
+  const { scrollYProgress } = useScroll()
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  })
+
+  const isHomePage = pathname === '/'
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
+      {/* Scroll Progress Bar */}
+      {isHomePage && (
+        <motion.div
+          className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary/50 via-primary to-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] origin-left z-[60]"
+          style={{ scaleX }}
+        />
+      )}
       <nav className="glass border-b border-primary/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -102,7 +121,7 @@ export function Navbar() {
                       aria-label="Open user menu"
                     >
                       <Avatar className="h-8 w-8 border-2 border-primary/30 ring-2 ring-primary/10">
-                        <AvatarImage src={avatarSrc} alt={user?.name || 'User'} />
+                        <AvatarImage key={avatarSrc} src={avatarSrc} alt={user?.name || 'User'} className="object-cover" />
                         <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                           {initials}
                         </AvatarFallback>
@@ -119,7 +138,7 @@ export function Navbar() {
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex items-center gap-3 py-1">
                         <Avatar className="h-9 w-9 border border-primary/30">
-                          <AvatarImage src={avatarSrc} alt={user?.name || 'User'} />
+                          <AvatarImage key={avatarSrc} src={avatarSrc} alt={user?.name || 'User'} className="object-cover" />
                           <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                             {initials}
                           </AvatarFallback>
@@ -180,7 +199,7 @@ export function Navbar() {
               {isAuthenticated && (
                 <Link href="/profile" aria-label="Go to profile">
                   <Avatar className="h-8 w-8 border-2 border-primary/30 ring-2 ring-primary/10">
-                    <AvatarImage src={avatarSrc} alt={user?.name || 'User'} />
+                    <AvatarImage key={avatarSrc} src={avatarSrc} alt={user?.name || 'User'} className="object-cover" />
                     <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                       {initials}
                     </AvatarFallback>
@@ -217,7 +236,7 @@ export function Navbar() {
                 {isAuthenticated && (
                   <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/30 mb-3">
                     <Avatar className="h-9 w-9 border-2 border-primary/30">
-                      <AvatarImage src={avatarSrc} alt={user?.name || 'User'} />
+                      <AvatarImage key={avatarSrc} src={avatarSrc} alt={user?.name || 'User'} className="object-cover" />
                       <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                         {initials}
                       </AvatarFallback>

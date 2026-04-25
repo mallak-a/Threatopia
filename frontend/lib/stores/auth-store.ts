@@ -13,6 +13,7 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
+  previewAvatar: string | null
 
   // Actions
   login: (credentials: AuthCredentials) => Promise<boolean>
@@ -23,6 +24,7 @@ interface AuthState {
   clearError: () => void
   addXP: (points: number) => void
   updateUser: (user: User | null) => void
+  setPreviewAvatar: (url: string | null) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -35,6 +37,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      previewAvatar: null,
 
       // Login action
       login: async (credentials) => {
@@ -132,6 +135,9 @@ export const useAuthStore = create<AuthState>()(
 
       // Update user
       updateUser: (user) => set({ user }),
+
+      // Set preview avatar
+      setPreviewAvatar: (url) => set({ previewAvatar: url }),
     }),
     {
       name: 'threatopia-auth',

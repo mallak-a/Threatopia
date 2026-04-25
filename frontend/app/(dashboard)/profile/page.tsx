@@ -48,10 +48,9 @@ const getPhonePart = (fullPhone?: string, countryName?: string) => {
 
 export default function ProfilePage() {
   const authStore = useAuthStore()
-  const { user, profile, updateUser } = authStore
+  const { user, profile, updateUser, setPreviewAvatar, previewAvatar } = authStore
   const [isEditing, setIsEditing] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [cropSourceUrl, setCropSourceUrl] = useState<string | null>(null)
   const [cropDialogOpen, setCropDialogOpen] = useState(false)
   const [rotation, setRotation] = useState(0)
@@ -80,7 +79,7 @@ export default function ProfilePage() {
     return `${BACKEND_BASE_URL}${cleanUrl}`
   }
 
-  const displayAvatar = previewUrl || normalizeAvatarUrl(user?.avatar)
+  const displayAvatar = previewAvatar || normalizeAvatarUrl(user?.avatar)
 
   const stats = {
     totalPoints: profile?.points || 0,
@@ -169,7 +168,6 @@ export default function ProfilePage() {
   const cancelCrop = () => {
     setCropDialogOpen(false)
     setSelectedFile(null)
-    setPreviewUrl(null)
     setCropSourceUrl(null)
     setRotation(0)
     setZoom(1)
@@ -177,6 +175,7 @@ export default function ProfilePage() {
     setImageSize({ w: 0, h: 0 })
     const fileInput = document.getElementById('profile-photo-input') as HTMLInputElement
     if (fileInput) fileInput.value = ''
+    setPreviewAvatar(null)
   }
 
   const closeCropDialog = () => {
@@ -317,7 +316,8 @@ export default function ProfilePage() {
         if (!blob) return
         const croppedFile = new File([blob], selectedFile.name, { type: 'image/png' })
         setSelectedFile(croppedFile)
-        setPreviewUrl(URL.createObjectURL(blob))
+        const url = URL.createObjectURL(blob)
+        setPreviewAvatar(url)
         closeCropDialog()
       }, 'image/png')
     }
@@ -325,11 +325,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     return () => {
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl)
+      if (previewAvatar && previewAvatar.startsWith('blob:')) {
+        URL.revokeObjectURL(previewAvatar)
       }
     }
-  }, [previewUrl])
+  }, [previewAvatar])
 
   const handleCameraClick = () => {
     const fileInput = document.getElementById('profile-photo-input') as HTMLInputElement
@@ -429,7 +429,7 @@ export default function ProfilePage() {
     if (uploadSucceeded) {
       setIsEditing(false)
       setSelectedFile(null)
-      setPreviewUrl(null)
+      setPreviewAvatar(null)
       setRotation(0)
       setZoom(1)
       setPanPosition({ x: 0, y: 0 })
